@@ -1,0 +1,315 @@
+Tab 1 (on bell)
+cd /depot/microbiome/data/ANSC516/EmilySpicuzza
+mkdir raw_data
+cd raw_data
+mkdir 230814_multiplxed_fastqs_Proctor_Run1
+mkdir 230814_multiplxed_fastqs_Proctor_Run2
+mkdir 230814_Proctor_combined_multiplxed_fastqs
+
+Tab 2 (NOT on bell)
+cd Box/Proctor_Lab_Group/Proctor Qiime Analysis/Aliya Sequencing Data
+scp Walls_MetaData_2025.txt (tsv/csv) espicuzz@bell.rcac.purdue.edu:/depot/microbiome/data/ANSC516/EmilySpicuzza
+<Password,push>
+cd '.\Raw Data\'
+cd .\230814_multiplxed_fastqs_Proctor_Run1\
+scp *.fastq.gz espicuzz@bell.rcac.purdue.edu:/depot/microbiome/data/ANSC516/EmilySpicuzza/raw_data/230814_multiplxed_fastqs_Proctor_Run1
+#This will take a while (like 10-30 mins) Wait until all 3 files are done before attempting to do anything
+cd ..
+cd .\230814_multiplxed_fastqs_Proctor_Run2\
+scp *.fastq.gz espicuzz@bell.rcac.purdue.edu:/depot/microbiome/data/ANSC516/EmilySpicuzza/raw_data/230814_multiplxed_fastqs_Proctor_Run2
+#This will take a while (like 10-30 mins) Wait until all 3 files are done before attempting to do anything
+cd ..
+cd .\ 230814_Proctor_combined_multiplxed_fastqs\
+scp *.fastq.gz espicuzz@bell.rcac.purdue.edu:/depot/microbiome/data/ANSC516/EmilySpicuzza/raw_data/230814_Proctor_combined_multiplxed_fastqs
+#This will take a while (like 10-30 mins) Wait until all 3 files are done before attempting to do anything
+cd ..
+scp 230814_Proctor_16s_DG_230814.txt espicuzz@bell.rcac.purdue.edu:/depot/microbiome/data/ANSC516/EmilySpicuzza/raw_data
+
+***
+ssh espicuzz@bell.rcac.purdue.edu
+module load conda
+conda activate qiime2-amplicon-2024.10
+conda info
+
+
+nano filename.slurm
+cd /scratch/bell/espicuzz/raw_data/qiime_combined/
+
+
+#!/bin/sh -l
+
+
+#SBATCH --nodes=1                    ##number of requested nodes (a node is a group of CPUs)
+#SBATCH -n 10                        ##number of requested CPUs
+#SBATCH --time=05:00:00              ##time requested
+#SBATCH --job-name MP-pipeline       ##name of job
+#SBATCH -A microbiome                ##name of the queue you are using. Could be scholar or microbiome if you are on snyder
+
+
+#########################################################################
+echo "Start time"
+date +"%d %B %Y %H:%M:%S"
+
+
+#step 1, cd into the proper directory. This directory must already exist
+cd /scratch/bell/espicuzz/raw_data/qiime_combined/
+pwd
+
+
+echo "initiating qiime2 moving pictures tutorial pipeline"
+
+
+echo "Data Import"
+#Make the sequences into a qiime recognizable format
+qiime tools import \
+  --type EMPPairedEndSequences \
+  --input-path emp-paired-end-sequences \
+  --output-path emp-paired-end-sequences.qza
+
+
+echo "Demultiplex."
+qiime demux emp-paired \
+  --m-barcodes-file Walls_MetaData_2025.txt \
+  --m-barcodes-column BarcodeSequence \
+  --p-rev-comp-barcodes \
+  --p-rev-comp-mapping-barcodes \
+  --i-seqs emp-paired-end-sequences.qza \
+  --o-per-sample-sequences demux-full-new.qza \
+  --o-error-correction-details demux-details-new.qza
+
+
+qiime demux summarize \
+  --i-data demux-full-new.qza \
+  --o-visualization demux-full-new.qzv
+
+
+echo "End time" (3 hours)
+date +"%d %B %Y %H:%M:%S"
+
+
+#to run: sbatch qiime_demux.slurm (46088821)
+#and then check on its progress:
+#squeue -A microbiome
+#ls
+#cat slurm-<job-id>.out
+
+Tab 2
+cd /Downloads/
+scp espicuzz@bell.rcac.purdue.edu:/scratch/bell/espicuzz/raw_data/qiime_combined/*.qzv . 
+
+#Open Qiime2 to view demux-full-new.qzv
+https://view.qiime2.org/
+
+***
+echo "Start time"
+date +"%d %B %Y %H:%M:%S"
+
+#step 1, cd into the proper directory. This directory must already exist
+
+cd $RCAC_SCRATCH
+cd raw_data/qiime_combined
+
+pwd
+
+#Demux was done in a different slurm file
+
+#De-noise. Error corrections.
+echo “dada2”
+qiime dada2 denoise-paired \
+ 	--i-demultiplexed-seqs demux-full-new.qza \
+  	--p-trim-left-f 0 \
+  	--p-trim-left-r 0 \
+ 	--p-trunc-len-f 195 \
+  	--p-trunc-len-r 205 \
+  	--o-table table.qza \
+  	--o-representative-sequences rep-seqs.qza \
+	--o-denoising-stats stats-dada2.qza
+
+echo "Feature Table Summarization"
+#Create a .qzv from the output of denoise
+qiime feature-table summarize \
+  --i-table table.qza \
+  --o-visualization table.qzv \
+  --m-sample-metadata-file Walls_MetaData_2025.txt
+
+qiime feature-table tabulate-seqs \
+  --i-data rep-seqs.qza \
+  --o-visualization rep-seqs.qzv
+
+echo "Visualize Denoising Stats"
+qiime metadata tabulate \
+  --m-input-file stats-dada2.qza \
+  --o-visualization stats-dada2.qzv
+
+echo "End time" (4.5 hrs)
+date +"%d %B %Y %H:%M:%S"
+
+#to run: sbatch qiime_full.slurm (46169183)
+
+#and then check on its progress:
+#squeue -A microbiome
+#ls
+#cat slurm-<job-id>.out
+Tab 2
+cd /Downloads/
+scp espicuzz@bell.rcac.purdue.edu:/scratch/bell/espicuzz/raw_data/qiime_combined/*.qzv . 
+
+#Open Qiime2 to view table.qzv, rep-seqs.qzv, and stats-dada2.qzv		(https://view.qiime2.org/)
+
+***
+echo "Start time"
+date +"%d %B %Y %H:%M:%S"
+
+#step 1, cd into the proper directory. This directory must already exist
+
+cd $RCAC_SCRATCH
+cd raw_data/qiime_combined
+
+pwd
+
+echo “Phylogenetic tree method”
+
+qiime phylogeny align-to-tree-mafft-fasttree \
+	--i-sequences rep-seqs.qza \
+	--o-alignment aligned-rep-seqs.qza \
+	--o-masked-alignment masked-aligned-rep-seqs.qza \
+	--o-tree unrooted-tree.qza \
+	--o-rooted-tree rooted-tree.qza
+
+echo "Alpha and Beta Diversity"
+qiime diversity core-metrics-phylogenetic \
+	--i-phylogeny rooted-tree.qza \
+	--i-table table.qza \
+	--p-sampling-depth 20980 \
+	--m-metadata-file Walls_MetaData_2025.txt \
+	--output-dir core-metrics-results
+
+qiime diversity alpha-group-significance \
+	--i-alpha-diversity core-metrics-results/faith_pd_vector.qza \
+	--m-metadata-file Walls_MetaData_2025.txt \
+	--o-visualization core-metrics-results/faith-pd-group-significance.qzv
+
+qiime diversity alpha-group-significance \
+	--i-alpha-diversity core-metrics-results/evenness_vector.qza \
+	--m-metadata-file Walls_MetaData_2025.txt \
+	--o-visualization core-metrics-results/evenness-group-significance.qzv
+
+#Analyze Study=Stagnation/Flushing, Stag, Type too?
+
+qiime diversity beta-group-significance \
+	--i-distance-matrix core-metrics-results/unweighted_unifrac_distance_matrix.qza \
+	--m-metadata-file Walls_MetaData_2025.txt \
+	--m-metadata-column Event \
+	--o-visualization core-metrics-results/unweighted-unifrac-event-significance.qzv \
+	--p-pairwise
+
+qiime diversity beta-group-significance \
+	--i-distance-matrix core-metrics-results/unweighted_unifrac_distance_matrix.qza \
+	--m-metadata-file Walls_MetaData_2025.txt \
+	--m-metadata-column Exp \
+	--o-visualization core-metrics-results/unweighted-unifrac-exp-significance.qzv \
+	--p-pairwise
+
+#qiime_diversity2.slurm below (47378651)
+
+qiime diversity beta-group-significance \
+  --i-distance-matrix diversity-core-metrics-phylogenetic/unweighted_unifrac_distance_matrix.qza \
+  --m-metadata-file Walls_MetaData_2025.txt \
+  --m-metadata-column Event \
+  --p-pairwise \
+  --o-visualization unweighted-unifrac-event-group-significance.qzv
+
+qiime diversity beta-group-significance \
+  --i-distance-matrix diversity-core-metrics-phylogenetic/unweighted_unifrac_distance_matrix.qza \
+  --m-metadata-file Walls_MetaData_2025.txt \
+  --m-metadata-column Exp \
+  --p-pairwise \
+  --o-visualization unweighted-unifrac-exp-group-significance.qzv
+
+echo "End time" (3 minutes)
+date +"%d %B %Y %H:%M:%S"
+
+#to run: sbatch qiime_diversity.slurm (46592510)
+
+#and then check on its progress:
+#squeue -A microbiome
+#ls
+#cat slurm-<job-id>.out
+
+Tab 2
+cd /Downloads/
+scp espicuzz@bell.rcac.purdue.edu:/scratch/bell/espicuzz/raw_data/qiime_combined/core-metrics-results/*.qzv . 
+
+#Open Qiime2 to view bray_curtis_emperor, evenness-group-significance, faith-pd-group-significance, jaccard_emperor, unweighted_unifrac_emperor, unweighted-unifrac-location-significance, unweighted-unifrac-wall-significance, and weighted_unifrac_emperor
+(https://view.qiime2.org/)
+
+***
+Echo “Rarefaction”
+qiime diversity alpha-rarefaction \
+  --i-table table.qza \
+  --i-phylogeny rooted-tree.qza \
+  --p-max-depth 80000 \		#increase if lines in rarefaction plot don't level out (83920?)
+  --m-metadata-file Walls_MetaData_2025.txt \
+  --o-visualization alpha-rarefaction.qzv
+
+Echo “Taxonomic analysis”
+wget \
+  -O "gg-13-8-99-515-806-nb-classifier.qza" \ "https://data.qiime2.org/classifiers/sklearn-1.4.2/greengenes/gg-13-8-99-515-806-nb-classifier.qza"
+
+qiime feature-classifier classify-sklearn \
+  --i-classifier gg-13-8-99-515-806-nb-classifier.qza \
+  --i-reads rep-seqs.qza \
+  --o-classification taxonomy.qza
+
+qiime metadata tabulate \
+  --m-input-file taxonomy.qza \
+  --o-visualization taxonomy.qzv
+
+echo “Stacked barplot”
+qiime taxa barplot \
+  --i-table table.qza \
+  --i-taxonomy taxonomy.qza \
+  --m-metadata-file Walls_MetaData_2025.txt \
+  --o-visualization taxa-bar-plots.qzv
+
+Echo “Differential abundance testing with ANCOM-BC”
+qiime feature-table filter-samples \
+  --i-table table.qza \
+  --m-metadata-file Walls_MetaData_2025.txt \
+  --p-where "[Study]=’Stagnation’" \
+  --o-filtered-table stagnation-table.qza
+
+qiime taxa collapse \
+  --i-table stagnation-table.qza \
+  --i-taxonomy taxonomy.qza \
+  --p-level 6 \
+  --o-collapsed-table stagnation-table-l6.qza
+
+qiime composition ancombc \
+  --i-table stagnation-table-l6.qza \
+  --m-metadata-file Walls_MetaData_2025.txt \
+  --p-formula ‘Stag.Loc’ \
+  --o-differentials l6-ancombc-location.qza
+
+qiime composition da-barplot \
+  --i-data l6-ancombc-location.qza \
+  --p-significance-threshold 0.001 \
+  --p-level-delimiter ';' \
+  --o-visualization l6-da-barplot-location.qzv
+
+echo "End time" (3 minutes)
+date +"%d %B %Y %H:%M:%S"
+
+#to run: sbatch qiime_populations.slurm (47170558)
+
+#and then check on its progress:
+#squeue -A microbiome
+#ls
+#cat slurm-?.out
+
+Tab 2
+cd /Downloads
+scp espicuzz@bell.rcac.purdue.edu:/scratch/bell/espicuzz/raw_data/qiime_combined/*.qzv . 
+
+taxa-bar-plot, taxonomy
+https://view.qiime2.org/ 
