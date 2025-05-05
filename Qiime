@@ -1,4 +1,4 @@
-Tab 1 (on bell)
+Tab 1 (on Bell)
 cd /depot/microbiome/data/ANSC516/EmilySpicuzza
 mkdir raw_data
 cd raw_data
@@ -6,7 +6,7 @@ mkdir 230814_multiplxed_fastqs_Proctor_Run1
 mkdir 230814_multiplxed_fastqs_Proctor_Run2
 mkdir 230814_Proctor_combined_multiplxed_fastqs
 
-Tab 2 (NOT on bell)
+Tab 2 (NOT on Bell)
 cd Box/Proctor_Lab_Group/Proctor Qiime Analysis/Aliya Sequencing Data
 scp Walls_MetaData_2025.txt (tsv/csv) espicuzz@bell.rcac.purdue.edu:/depot/microbiome/data/ANSC516/EmilySpicuzza
 <Password,push>
@@ -31,10 +31,8 @@ module load conda
 conda activate qiime2-amplicon-2024.10
 conda info
 
-
 nano filename.slurm
 cd /scratch/bell/espicuzz/raw_data/qiime_combined/
-
 
 #!/bin/sh -l
 
@@ -82,35 +80,6 @@ qiime demux summarize \
   --i-data demux-full-new.qza \
   --o-visualization demux-full-new.qzv
 
-
-echo "End time" (3 hours)
-date +"%d %B %Y %H:%M:%S"
-
-
-#to run: sbatch qiime_demux.slurm (46088821)
-#and then check on its progress:
-#squeue -A microbiome
-#ls
-#cat slurm-<job-id>.out
-
-Tab 2
-cd /Downloads/
-scp espicuzz@bell.rcac.purdue.edu:/scratch/bell/espicuzz/raw_data/qiime_combined/*.qzv . 
-
-#Open Qiime2 to view demux-full-new.qzv
-https://view.qiime2.org/
-
-***
-echo "Start time"
-date +"%d %B %Y %H:%M:%S"
-
-#step 1, cd into the proper directory. This directory must already exist
-
-cd $RCAC_SCRATCH
-cd raw_data/qiime_combined
-
-pwd
-
 #Demux was done in a different slurm file
 
 #De-noise. Error corrections.
@@ -141,32 +110,7 @@ qiime metadata tabulate \
   --m-input-file stats-dada2.qza \
   --o-visualization stats-dada2.qzv
 
-echo "End time" (4.5 hrs)
-date +"%d %B %Y %H:%M:%S"
-
-#to run: sbatch qiime_full.slurm (46169183)
-
-#and then check on its progress:
-#squeue -A microbiome
-#ls
-#cat slurm-<job-id>.out
-Tab 2
-cd /Downloads/
-scp espicuzz@bell.rcac.purdue.edu:/scratch/bell/espicuzz/raw_data/qiime_combined/*.qzv . 
-
-#Open Qiime2 to view table.qzv, rep-seqs.qzv, and stats-dada2.qzv		(https://view.qiime2.org/)
-
 ***
-echo "Start time"
-date +"%d %B %Y %H:%M:%S"
-
-#step 1, cd into the proper directory. This directory must already exist
-
-cd $RCAC_SCRATCH
-cd raw_data/qiime_combined
-
-pwd
-
 echo “Phylogenetic tree method”
 
 qiime phylogeny align-to-tree-mafft-fasttree \
@@ -194,8 +138,6 @@ qiime diversity alpha-group-significance \
 	--m-metadata-file Walls_MetaData_2025.txt \
 	--o-visualization core-metrics-results/evenness-group-significance.qzv
 
-#Analyze Study=Stagnation/Flushing, Stag, Type too?
-
 qiime diversity beta-group-significance \
 	--i-distance-matrix core-metrics-results/unweighted_unifrac_distance_matrix.qza \
 	--m-metadata-file Walls_MetaData_2025.txt \
@@ -210,8 +152,6 @@ qiime diversity beta-group-significance \
 	--o-visualization core-metrics-results/unweighted-unifrac-exp-significance.qzv \
 	--p-pairwise
 
-#qiime_diversity2.slurm below (47378651)
-
 qiime diversity beta-group-significance \
   --i-distance-matrix diversity-core-metrics-phylogenetic/unweighted_unifrac_distance_matrix.qza \
   --m-metadata-file Walls_MetaData_2025.txt \
@@ -225,23 +165,6 @@ qiime diversity beta-group-significance \
   --m-metadata-column Exp \
   --p-pairwise \
   --o-visualization unweighted-unifrac-exp-group-significance.qzv
-
-echo "End time" (3 minutes)
-date +"%d %B %Y %H:%M:%S"
-
-#to run: sbatch qiime_diversity.slurm (46592510)
-
-#and then check on its progress:
-#squeue -A microbiome
-#ls
-#cat slurm-<job-id>.out
-
-Tab 2
-cd /Downloads/
-scp espicuzz@bell.rcac.purdue.edu:/scratch/bell/espicuzz/raw_data/qiime_combined/core-metrics-results/*.qzv . 
-
-#Open Qiime2 to view bray_curtis_emperor, evenness-group-significance, faith-pd-group-significance, jaccard_emperor, unweighted_unifrac_emperor, unweighted-unifrac-location-significance, unweighted-unifrac-wall-significance, and weighted_unifrac_emperor
-(https://view.qiime2.org/)
 
 ***
 Echo “Rarefaction”
@@ -297,19 +220,18 @@ qiime composition da-barplot \
   --p-level-delimiter ';' \
   --o-visualization l6-da-barplot-location.qzv
 
-echo "End time" (3 minutes)
+echo "End time"
 date +"%d %B %Y %H:%M:%S"
 
-#to run: sbatch qiime_populations.slurm (47170558)
+#to run: sbatch qiime_populations.slurm
 
 #and then check on its progress:
 #squeue -A microbiome
 #ls
-#cat slurm-?.out
+#cat slurm-X.out
 
 Tab 2
 cd /Downloads
 scp espicuzz@bell.rcac.purdue.edu:/scratch/bell/espicuzz/raw_data/qiime_combined/*.qzv . 
 
-taxa-bar-plot, taxonomy
-https://view.qiime2.org/ 
+#View on https://view.qiime2.org/ 
