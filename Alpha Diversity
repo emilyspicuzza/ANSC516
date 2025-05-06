@@ -47,6 +47,7 @@ list.files()
 library(tidyverse)
 library(qiime2R)
 library(ggpubr)
+library(stringr)
 
 ##Load Data
 # In the code, the text before = is what the file will be called in R. 
@@ -60,8 +61,7 @@ library(ggpubr)
 
 # Load data
 
-meta <- read_csv("Walls_MetaData_2025.csv")
-write.table(data, file = "Walls_MetaData_2025.tsv", sep = "\t", row.names = FALSE, quote = FALSE)
+meta<-read_q2metadata("Walls_MetaData_2025.txt")
 meta = meta[-1,]
 View(meta)
 
@@ -201,25 +201,27 @@ levels(meta$Stag.Loc)
 meta2<-meta[str_detect(meta$Stag.Loc, "Baseline|Weekly"),]
 meta3<-subset(meta2, Location!="HE")
 meta4<-subset(meta3, Location!="SE")
+meta5<-subset(meta4, Study!="Flushing")
+view(meta5)
 #Re-order the groups because the default is alphabetical order
 meta$Stag.Loc.ord = factor(meta$Stag.Loc, c("Baseline.A", "Weekly.A", "Baseline.B", "Weekly.B", "Baseline.C", "Weekly.C"))
 levels(meta$Stag.Loc.ord)
 
 #Plot
-boxplot(pielou_evenness ~ Stag.Loc.ord, data=meta4, ylab="Pielou evenness")
+boxplot(pielou_evenness ~ Stag.Loc.ord, data=meta5, ylab="Pielou evenness")
 
-evenness_boxplot <- ggplot(meta4, aes(Stag.Loc.ord, pielou_evenness)) + 
+evenness_boxplot <- ggplot(meta5, aes(Stag.Loc.ord, pielou_evenness)) + 
   geom_boxplot(aes(color = Stag.Loc.ord, shape = Study)) + 
   geom_jitter(aes(color = Stag.Loc.ord, shape = Study)) +
   #ylim(c(0.5,1)) +
   theme_q2r() +
   theme(axis.text.x = element_text(angle = 90, hjust = 1, vjust = 0.5)) +
-  labs(y="Pielou's evenness", x = "Stagnation Location")
-ggsave("output/evenness_boxplot.png", evenness_boxplot, height = 3, width = 3)
+  labs(y="Pielou's evenness", x = "Stagnation location")
+ggsave("output/evenness_boxplot.png", evenness_boxplot, height = 4, width = 3)
 
 # Now, the above graph is kind of not correct. Our test and our graphic do not exactly match. ANOVA and Tukey are tests based on the mean, but the boxplot plots the median. Its not wrong, its just not the best method. Unfortunately plotting the average and standard deviation is a little complicated.
 
-evenness_summary <- meta4 %>% # the names of the new data frame and the data frame to be summarised
+evenness_summary <- meta5 %>% # the names of the new data frame and the data frame to be summarised
   group_by(Stag.Loc.ord) %>%   # the grouping variable
   summarise(mean_evenness = mean(pielou_evenness),  # calculates the mean of each group
             sd_evenness = sd(pielou_evenness), # calculates the standard deviation of each group
@@ -248,7 +250,7 @@ ggsave("output/evenness_se.png", evenness_se, height = 2.5, width = 3)
 # ANOVA). If we have only two levels, we would run Wilcoxon rank sum 
 # test (non-parametric equivalent of t-test)
 
-kruskal.test(faith_pd ~ Stag.Loc.ord, data=meta4)
+kruskal.test(faith_pd ~ Stag.Loc.ord, data=meta5)
 
 # We can test pairwise within the age groups with Wilcoxon Rank Sum 
 # Tests. This test has a slightly different syntax than our other tests
@@ -258,21 +260,22 @@ pairwise.wilcox.test(meta$faith_pd, meta$Stag.Loc.ord, p.adjust.method="BH")
 # Like evenness, we see that pd also increases with age.
 
 #Plot
-boxplot(faith_pd ~ Stag.Loc.ord, data=meta4, ylab="Faith phylogenetic diversity")
+boxplot(faith_pd ~ Stag.Loc.ord, data=meta5, ylab="Faith phylogenetic diversity")
 
 # or with ggplot2
 
-faith_pd_boxplot <- ggplot(meta4, aes(Stag.Loc.ord, faith_pd)) + 
+faith_pd_boxplot <- ggplot(meta5, aes(Stag.Loc.ord, faith_pd)) + 
   geom_boxplot(aes(color = Stag.Loc.ord)) + 
+  geom_jitter(aes(color = Stag.Loc.ord, shape = Study), width = 0.2, size = 2) +
   #ylim(c(0.5,1)) +
   theme_q2r() +
   theme(axis.text.x = element_text(angle = 90, hjust = 1, vjust = 0.5)) +
   theme(legend.title = element_blank()) +
-  labs(y="Faith Phylogenetic Diversity", x = "") 
+  labs(y="Faith's Phylogenetic Diversity", x = "") 
 ggsave("output/pd.png", faith_pd_boxplot, height = 3, width = 3)
 
 ##
-faith_pd_study_boxplot <- ggplot(meta4, aes(Study, faith_pd)) + 
+faith_pd_study_boxplot <- ggplot(meta5, aes(Study, faith_pd)) + 
   geom_boxplot(aes(color = Study)) + 
   geom_jitter(aes(color = Study)) +
   #ylim(c(0.5,1)) +
@@ -282,9 +285,9 @@ faith_pd_study_boxplot <- ggplot(meta4, aes(Study, faith_pd)) +
   labs(y="Faith's Phylogenetic Diversity", x = "Study") 
 ggsave("output/faith_pd_study.png", faith_pd_study_boxplot, height = 3, width = 3)
 ##
-boxplot(observed_features ~ Stag.Loc.ord, data=meta4, ylab="Observed Features")
+boxplot(observed_features ~ Stag.Loc.ord, data=meta5, ylab="Observed Features")
 
-observed_features_boxplot <- ggplot(meta4, aes(Stag.Loc.ord, observed_features)) + 
+observed_features_boxplot <- ggplot(meta5, aes(Stag.Loc.ord, observed_features)) + 
   geom_boxplot(aes(color = Stag.Loc.ord)) + 
   geom_jitter(aes(color = Stag.Loc.ord, shape = Study)) + 
   #ylim(c(0.5,1)) +
@@ -294,9 +297,9 @@ observed_features_boxplot <- ggplot(meta4, aes(Stag.Loc.ord, observed_features))
   labs(y="Observed Features", x = "Stagnation Location") 
 ggsave("output/observed_features.png", observed_features_boxplot, height = 3, width = 3)
 ##
-boxplot(shannon_entropy ~ Stag.Loc.ord, data=meta4, ylab="Shannnon Index")
+boxplot(shannon_entropy ~ Stag.Loc.ord, data=meta5, ylab="Shannnon Index")
 
-shannon_boxplot <- ggplot(meta4, aes(Stag.Loc.ord, shannon_entropy)) + 
+shannon_boxplot <- ggplot(meta5, aes(Stag.Loc.ord, shannon_entropy)) + 
   geom_boxplot(aes(color = Stag.Loc.ord)) + 
   geom_jitter(aes(color = Stag.Loc.ord, shape = Study)) + 
   #ylim(c(0.5,1)) +
@@ -319,14 +322,14 @@ ggsave("output/shannon.png", shannon_boxplot, height = 3, width = 3)
 
 # Does days.since.experiment.start impact evenness of the microbiota?
 
-glm.evenness.time = glm(pielou_evenness ~ Stag.Loc, data=meta4)
+glm.evenness.time = glm(pielou_evenness ~ Stag.Loc, data=meta5)
 summary(glm.evenness.time)
 
 #The output let's us know that the intercept of our model is significantly different from 0 but our slope (*e.g.* our variable of interest) is not. This makes sense when we look at the data.
 
-plot(pielou_evenness ~ Stag.Loc, data=meta4)
+plot(pielou_evenness ~ Stag.Loc, data=meta5)
 #Add the glm best fit line
-plot(pielou_evenness ~ Stag.Loc, data=meta4) + abline(glm.evenness.time)
+plot(pielou_evenness ~ Stag.Loc, data=meta5) + abline(glm.evenness.time)
 
 # **Non-normally distributed metrics**
 
@@ -340,11 +343,11 @@ plot(pielou_evenness ~ Stag.Loc, data=meta4) + abline(glm.evenness.time)
 
 # First, the Gaussian (normal) distribution, which we already know is a bad fit.
 
-gaussian.faith.time = glm(faith_pd ~ Stag.Loc, data=meta4, family="gaussian")
+gaussian.faith.time = glm(faith_pd ~ Stag.Loc, data=meta5, family="gaussian")
 plot(gaussian.faith.time, which=c(1,2))
 
 # Quasipoisson (log) distribution
-qp.faith.time = glm(faith_pd ~ Stag.Loc, data=meta4, family="quasipoisson")
+qp.faith.time = glm(faith_pd ~ Stag.Loc, data=meta5, family="quasipoisson")
 plot(qp.faith.time, which=c(1,2))
 
 # What we're looking for is no pattern in the Residuals vs. Fitted graph 
@@ -362,5 +365,5 @@ summary(qp.faith.time)
 # Plotting this we see that, indeed, there is a trend toward correlation between Faith_pd and days.since.experiment.start.
 
 #Plot
-plot(log(faith_pd) ~ Stag.Loc, data=meta4, ylab="ln(Faith Phylo. Diversity)")
-plot(log(faith_pd) ~ Stag.Loc, data=meta4, ylab="ln(Faith Phylo. Diversity)") + abline(qp.faith.time)
+plot(log(faith_pd) ~ Stag.Loc, data=meta5, ylab="ln(Faith Phylo. Diversity)")
+plot(log(faith_pd) ~ Stag.Loc, data=meta5, ylab="ln(Faith Phylo. Diversity)") + abline(qp.faith.time)
