@@ -45,8 +45,7 @@ if(!dir.exists("output"))
   dir.create("output")
 
 #How to load a file into R
-metadata <- read.csv("Walls_MetaData_2025.csv", header = TRUE, stringsAsFactors = FALSE)
-write.table(metadata, file = "Walls_MetaData_2025.tsv", sep = "\t", row.names = FALSE, quote = FALSE)
+metadata <- read.delim("Walls_MetaData_2025.txt", sep = "\t", header = T, quote = "", stringsAsFactors = F)
 metadata[1,]     #row,column
 metadata[,1]
 #When subsetting, the first number is the row and after the comma is the column
@@ -54,19 +53,21 @@ metadata <- metadata[-1,]
 
 #Now the qiime2R method
 str(metadata)
-meta$Stag.Loc <- as.factor(meta$Stag.Loc)
+metadata$Stag.Loc <- as.factor(metadata$Stag.Loc)
 levels(metadata$Stag.Loc)
 metadata2<-metadata[str_detect(metadata$Stag.Loc, "Baseline|Weekly"),]
 metadata3<-subset(metadata2, Location!="HE")
 metadata4<-subset(metadata3, Location!="SE")
+metadata5<-subset(metadata4, Study!="Flushing")
+view(metadata5)
 #Re-order the groups because the default is alphabetical order
-meta$Stag.Loc = factor(meta$Stag.Loc, c("Baseline.A", "Weekly.A", "Baseline.B", "Weekly.B", "Baseline.C", "Weekly.C"))
-levels(meta$Stag.Loc)
+metadata$Stag.Loc = factor(metadata$Stag.Loc, c("Baseline.A", "Weekly.A", "Baseline.B", "Weekly.B", "Baseline.C", "Weekly.C"))
+levels(metadata$Stag.Loc)
 
-row.names(metadata4) <- metadata4[,1]
-row.names(metadata4) <- metadata4$SampleID
+row.names(metadata5) <- metadata5[,1]
+row.names(metadata5) <- metadata5$SampleID
 #metadata <- metadata[,-1]
-row.names(metadata4)
+row.names(metadata5)
 
 bc_PCoA<-read_qza("core-metrics-results/bray_curtis_pcoa_results.qza")
 wUF <- read_qza("core-metrics-results/weighted_unifrac_pcoa_results.qza")
@@ -78,7 +79,7 @@ stag_colors <- c("Black", "Blue", "Green", "Gray", "Red", "Purple")
 
 bc_meta <- bc_PCoA$data$Vectors %>%
   select(SampleID, PC1, PC2, PC3) %>%
-  inner_join(metadata4, by = c("SampleID" = "SampleID"))
+  inner_join(metadata5, by = c("SampleID" = "SampleID"))
 
 # Now we are going to make an ordination plot
 ggplot(bc_meta, aes(x=PC1, y=PC2, color=Stag.Loc)) +
@@ -105,7 +106,7 @@ ggsave(paste0("output/BC-basic_", my_column,".png"), height=2, width=3, device="
 centroids <- aggregate(cbind(PC1,PC2)~get(my_column),bc_meta,mean)
 colnames(centroids)[1] <- "Stag.Loc"
 
-ggplot(bc_meta, aes(x=PC1, y=PC2, color=get(my_column))) +
+ggplot(bc_meta, aes(x=PC1, y=PC2, color=Stag.Loc)) +
   geom_point() + #alpha controls transparency and helps when points are overlapping
   geom_point(data=centroids, size = 3) +
   theme_q2r() +
@@ -113,9 +114,9 @@ ggplot(bc_meta, aes(x=PC1, y=PC2, color=get(my_column))) +
   xlab(paste0("PC1 (", round(100*bc_PCoA$data$ProportionExplained[1], digits = 2), "%)")) +
   ylab(paste0("PC2 (", round(100*bc_PCoA$data$ProportionExplained[2], digits = 2), "%)")) +
   scale_color_manual(values=stag_colors, name = my_column)
-ggsave(paste0("output/BC-ellipse_", my_column,".pdf"), height=3, width=4.5, device="pdf") # save a PDF 3 inches by 4 inches
+ggsave(paste0("output/BC-ellipse_", my_column,".png"), height=3, width=4.5, device="png") # save a PDF 3 inches by 4 inches
 
-ggplot(bc_meta, aes(x=PC1, y=PC2, color=get(my_column))) +
+ggplot(bc_meta, aes(x=PC1, y=PC2, color=Stag.Loc)) +
   geom_point(aes(shape= Study)) + #alpha controls transparency and helps when points are overlapping
   #geom_point(data=centroids, size = 3) +
   theme_q2r() +
@@ -123,7 +124,7 @@ ggplot(bc_meta, aes(x=PC1, y=PC2, color=get(my_column))) +
   xlab(paste0("PC1 (", round(100*bc_PCoA$data$ProportionExplained[1], digits = 2), "%)")) +
   ylab(paste0("PC2 (", round(100*bc_PCoA$data$ProportionExplained[2], digits = 2), "%)")) 
 #scale_color_manual(values=body_colors, name = my_column)
-ggsave(paste0("output/BC-ellipse_", my_column,"-subject.pdf"), height=3, width=4.5, device="pdf") # save a PDF 3 inches by 4 inches
+ggsave(paste0("output/BC-ellipse_", my_column,"-study.png"), height=3, width=4.5, device="png") # save a PDF 3 inches by 4 inches
 
 ##################################################################################
 ## SAME thing but with weighted UniFrac
@@ -132,11 +133,11 @@ Wuni_PCoA<-read_qza("core-metrics-results/weighted_unifrac_pcoa_results.qza")
 
 Wuni_meta <- Wuni_PCoA$data$Vectors %>%
   select(SampleID, PC1, PC2) %>%
-  inner_join(metadata4, by = c("SampleID" = "SampleID"))
+  inner_join(metadata5, by = c("SampleID" = "SampleID"))
 
 centroids <- aggregate(cbind(PC1,PC2)~get(my_column),Wuni_meta,mean)
 
-ggplot(Wuni_meta, aes(x=PC1, y=PC2, color=get(my_column))) +
+ggplot(Wuni_meta, aes(x=PC1, y=PC2, color=Stag.Loc)) +
   geom_point(aes(color = Stag.Loc, shape = Study)) + #alpha controls transparency and helps when points are overlapping
   #geom_point(data=centroids, size = 3) +
   theme_q2r() +
@@ -146,7 +147,7 @@ ggplot(Wuni_meta, aes(x=PC1, y=PC2, color=get(my_column))) +
   ylab(paste0("PC2 (", round(100*Wuni_PCoA$data$ProportionExplained[2], digits = 2), "%)"))
 ggsave(paste0("output/Wuni-ellipse_", my_column,".png"), height=3, width=4.5, device="png") # save a 3 inches by 4 inches
 
-ggplot(Wuni_meta, aes(x=PC1, y=PC2, color=get(my_column))) +
+ggplot(Wuni_meta, aes(x=PC1, y=PC2, color=Stag.Loc)) +
   geom_point(aes(shape= Study), size = 3) + #alpha controls transparency and helps when points are overlapping
   #geom_point(data=centroids, size = 3) +
   theme_q2r() +
@@ -154,7 +155,7 @@ ggplot(Wuni_meta, aes(x=PC1, y=PC2, color=get(my_column))) +
   xlab(paste0("PC1 (", round(100*Wuni_PCoA$data$ProportionExplained[1], digits = 2), "%)")) +
   ylab(paste0("PC2 (", round(100*Wuni_PCoA$data$ProportionExplained[2], digits = 2), "%)")) +
   scale_color_manual(values=stag_colors, name = "Stag Location")
-ggsave(paste0("output/Wuni-ellipse_", my_column,"-study.pdf"), height=3, width=4.5, device="pdf") # save a PDF 3 inches by 4 inches
+ggsave(paste0("output/Wuni-ellipse_", my_column,"-study.png"), height=3, width=4.5, device="png") # save a PDF 3 inches by 4 inches
 
 ##################################################################################
 #Run some PERMANOVAs
@@ -163,17 +164,17 @@ ggsave(paste0("output/Wuni-ellipse_", my_column,"-study.pdf"), height=3, width=4
 bc_dist_mat<-read_qza("core-metrics-results/bray_curtis_distance_matrix.qza")
 bc_dm <- as.matrix(bc_dist_mat$data) 
 #I added the following code to convert values to be true
-setdiff(rownames(bc_dm), metadata4$SampleID)  #Find missing IDs
-setdiff(metadata4$SampleID, rownames(bc_dm))  #Find extra IDs
+setdiff(rownames(bc_dm), metadata5$SampleID)  #Find missing IDs
+setdiff(metadata5$SampleID, rownames(bc_dm))  #Find extra IDs
 
-metadata4$SampleID <- as.character(metadata4$SampleID)
-metadata4_sub <- metadata4[match(rownames(bc_dm), metadata4$SampleID), ]
+metadata5$SampleID <- as.character(metadata5$SampleID)
+metadata5_sub <- metadata5[match(rownames(bc_dm), metadata5$SampleID), ]
 
-all(rownames(bc_dm) == metadata4_sub$SampleID)
+all(rownames(bc_dm) == metadata5_sub$SampleID)
 
-metadata4_sub <- metadata4_sub[!is.na(metadata4_sub$Stag.Loc), ]
-bc_dm_clean <- bc_dm[metadata4_sub$SampleID, metadata4_sub$SampleID]
-PERMANOVA_out <- adonis2(bc_dm_clean ~ Stag.Loc, data = metadata4_sub)
+metadata5_sub <- metadata5_sub[!is.na(metadata5_sub$Stag.Loc), ]
+bc_dm_clean <- bc_dm[metadata5_sub$SampleID, metadata5_sub$SampleID]
+PERMANOVA_out <- adonis2(bc_dm_clean ~ Stag.Loc, data = metadata5_sub)
 
 write.table(PERMANOVA_out,"output/Stag.Loc_Adonis_overall.csv",sep=",", row.names = TRUE) 
 
@@ -253,7 +254,7 @@ pairwise.adonis2 <- function(x, data, strata = NULL, nperm=999, ... ) {
   return(res)
 } 
 
-Stag.Loc_Pair <- pairwise.adonis2(bc_dm_clean ~ Stag.Loc, data = metadata4_sub)
+Stag.Loc_Pair <- pairwise.adonis2(bc_dm_clean ~ Stag.Loc, data = metadata5_sub)
 write.table(Stag.Loc_Pair,"output/Stag.Loc_Adonis_pairwise.csv",sep=",", row.names = TRUE) 
 
 ##################################################################################
@@ -263,7 +264,7 @@ uWuni_PCoA<-read_qza("core-metrics-results/unweighted_unifrac_pcoa_results.qza")
 
 uWuni_meta <- uWuni_PCoA$data$Vectors %>%
   select(SampleID, PC1, PC2) %>%
-  inner_join(metadata4, by = c("SampleID" = "SampleID"))
+  inner_join(metadata5, by = c("SampleID" = "SampleID"))
 
 centroids <- aggregate(cbind(PC1,PC2)~get(my_column),uWuni_meta,mean)
 
@@ -271,7 +272,7 @@ ggplot(uWuni_meta, aes(x=PC1, y=PC2, color=Stag.Loc)) +
   geom_point(aes(shape= Study)) + #alpha controls transparency and helps when points are overlapping
   #geom_point(data=centroids, size = 3) +
   theme_q2r() +
-  facet_grid(~Study) +
+  #facet_grid(~Study) +
   stat_ellipse(level = 0.95, type = "t") +
   xlab(paste0("PC1 (", round(100*uWuni_PCoA$data$ProportionExplained[1], digits = 2), "%)")) +
   ylab(paste0("PC2 (", round(100*uWuni_PCoA$data$ProportionExplained[2], digits = 2), "%)")) 
@@ -285,21 +286,21 @@ ggplot(uWuni_meta, aes(x=PC1, y=PC2, color=get(my_column))) +
   xlab(paste0("PC1 (", round(100*uWuni_PCoA$data$ProportionExplained[1], digits = 2), "%)")) +
   ylab(paste0("PC2 (", round(100*uWuni_PCoA$data$ProportionExplained[2], digits = 2), "%)")) +
   scale_color_manual(values=stag_colors, name = "Stag Location")
-ggsave(paste0("output/uWuni-ellipse_", my_column,"-study.pdf"), height=3, width=4.5, device="pdf") # save a PDF 3 inches by 4 inches
+ggsave(paste0("output/uWuni-ellipse_", my_column,"-study.png"), height=3, width=4.5, device="png") # save a PDF 3 inches by 4 inches
 #########################################################################
 #Jaccard
 jaccard_PCoA<-read_qza("core-metrics-results/jaccard_pcoa_results.qza")
 
 jaccard_meta <- jaccard_PCoA$data$Vectors %>%
   select(SampleID, PC1, PC2, PC3) %>%
-  inner_join(metadata4, by = c("SampleID" = "SampleID"))
+  inner_join(metadata5, by = c("SampleID" = "SampleID"))
 
 # Now we are going to make an ordination plot
 ggplot(jaccard_meta, aes(x=PC1, y=PC2, color=Stag.Loc)) +
   geom_point() + #alpha controls transparency and helps when points are overlapping
   theme_q2r() +
-  xlab("PC1 (32.27%)") +
-  ylab("PC2 (22.28%)") +
+  xlab("PC1") +
+  ylab("PC2") +
   scale_color_manual(values=c("Black", "Blue", "Green", "Gray", "Red", "Purple"), name = "Stag-loc")
 
 # Now we are going to make our code a little more re-usable
@@ -310,11 +311,10 @@ my_column <- "Stag.Loc"
 ggplot(jaccard_meta, aes(x=PC1, y=PC2, color=get(my_column))) +
   geom_point() + #alpha controls transparency and helps when points are overlapping
   theme_q2r() +
-  facet_grid(~Study) +
+  #facet_grid(~Study) +
   xlab(paste0("PC1 (", round(100*jaccard_PCoA$data$ProportionExplained[1], digits = 2), "%)")) +
-  ylab(paste0("PC2 (", round(100*jaccard_PCoA$data$ProportionExplained[2], digits = 2), "%)")) +
-  scale_color_manual(values=stag_colors, name = my_column)
-ggsave(paste0("output/jaccard-basic_", my_column,".tiff"), height=2, width=3, device="tiff") # save a PDF 3 inches by 4 inches
+  ylab(paste0("PC2 (", round(100*jaccard_PCoA$data$ProportionExplained[2], digits = 2), "%)"))
+ggsave(paste0("output/jaccard-basic_", my_column,".png"), height=2, width=3, device="png") # save a PDF 3 inches by 4 inches
 
 centroids <- aggregate(cbind(PC1,PC2)~get(my_column),jaccard_meta,mean)
 colnames(centroids)[1] <- "Stag.Loc"
@@ -323,12 +323,12 @@ ggplot(jaccard_meta, aes(x=PC1, y=PC2, color=get(my_column))) +
   geom_point(aes(shape=Study)) + #alpha controls transparency and helps when points are overlapping
   geom_point(data=centroids, size = 3) +
   theme_q2r() +
-  facet_grid(~Study) +
+  #facet_grid(~Study) +
   stat_ellipse(level = 0.95, type = "t") +
   xlab(paste0("PC1 (", round(100*jaccard_PCoA$data$ProportionExplained[1], digits = 2), "%)")) +
   ylab(paste0("PC2 (", round(100*jaccard_PCoA$data$ProportionExplained[2], digits = 2), "%)")) +
   scale_color_manual(values=stag_colors, name = my_column)
-ggsave(paste0("output/jaccard-ellipse_", my_column,".pdf"), height=3, width=4.5, device="pdf") # save a PDF 3 inches by 4 inches
+ggsave(paste0("output/jaccard-ellipse_", my_column,".png"), height=3, width=4.5, device="png") # save a PDF 3 inches by 4 inches
 
 ggplot(jaccard_meta, aes(x=PC1, y=PC2, color=get(my_column))) +
   geom_point(aes(shape= Study)) + #alpha controls transparency and helps when points are overlapping
@@ -338,4 +338,4 @@ ggplot(jaccard_meta, aes(x=PC1, y=PC2, color=get(my_column))) +
   xlab(paste0("PC1 (", round(100*jaccard_PCoA$data$ProportionExplained[1], digits = 2), "%)")) +
   ylab(paste0("PC2 (", round(100*jaccard_PCoA$data$ProportionExplained[2], digits = 2), "%)")) 
 #scale_color_manual(values=body_colors, name = my_column)
-ggsave(paste0("output/jaccard-ellipse_", my_column,"-study.pdf"), height=3, width=4.5, device="pdf") # save a PDF 3 inches by 4 inches
+ggsave(paste0("output/jaccard-ellipse_", my_column,"-study.png"), height=3, width=4.5, device="png") # save a PDF 3 inches by 4 inches
