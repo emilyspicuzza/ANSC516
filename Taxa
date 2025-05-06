@@ -44,14 +44,16 @@ taxonomy<-read_qza("taxonomy.qza")
 head(taxonomy$data)
 taxonomy_table<-parse_taxonomy(taxonomy$data)
 
-metadata<-read_q2metadata("Walls_MetaData_2025.tsv")
+metadata<-read_q2metadata("Walls_MetaData_2025.txt")
 str(metadata)
 
-#meta$Stag.Loc <- as.factor(meta$Stag.Loc)
-#levels(meta$Stag.Loc)
-#metadata2<-meta[str_detect(meta$Stag.Loc, "Baseline|Weekly"),]
-#metadata3<-subset(meta2, Location!="HE")
-#metadata4<-subset(meta3, Location!="SE")
+metadata$Stag.Loc <- as.factor(metadata$Stag.Loc)
+levels(metadata$Stag.Loc)
+metadata2<-metadata[str_detect(metadata$Stag.Loc, "Baseline|Weekly"),]
+metadata3<-subset(metadata2, Location!="HE")
+metadata4<-subset(metadata3, Location!="SE")
+metadata5<-subset(metadata4, Study!="Flushing")
+view(metadata5)
 
 rare_table <- read_qza("core-metrics-results/rarefied_table.qza")
 feature_table <- rare_table$data
@@ -61,17 +63,17 @@ physeq <- qza_to_phyloseq(
   features="core-metrics-results/rarefied_table.qza",
   tree="rooted-tree.qza",
   taxonomy = "taxonomy.qza",
-  metadata = "Walls_MetaData_2025.tsv"
+  metadata = "Walls_MetaData_2025.txt"
 )
 
 asv_table <- data.frame(otu_table(physeq), check.names = F)
-metadata <- data.frame(sample_data(physeq), check.names = F)
+metadata5 <- data.frame(sample_data(physeq), check.names = F)
 taxonomy <- data.frame(tax_table(physeq), check.names = F)
 
 #Clean up metadata, slightly
-levels(metadata$Stag.Loc)
-metadata$Stag.Loc.ord = factor(metadata$Stag.Loc, c("Baseline.A", "Weekly.A", "Baseline.B", "Weekly.B", "Baseline.C", "Weekly.C"))
-levels(metadata$Stag.Loc.ord)
+levels(metadata5$Stag.Loc)
+metadata5$Stag.Loc.ord = factor(metadata5$Stag.Loc, c("Baseline.A", "Weekly.A", "Baseline.B", "Weekly.B", "Baseline.C", "Weekly.C"))
+levels(metadata5$Stag.Loc.ord)
 
 #Clean up taxonomy
 head(taxonomy)
@@ -120,7 +122,7 @@ for (i in 1:nrow(tax.clean)){
 #Assign our edited and formatted tables as variables to be feed into phyloseq
 OTU.physeq = otu_table(as.matrix(asv_table), taxa_are_rows=TRUE)
 tax.physeq = tax_table(as.matrix(tax.clean))    
-meta.physeq = sample_data(metadata)
+meta.physeq = sample_data(metadata5)
 
 #We then merge these into an object of class phyloseq.
 physeq_bar_plot = phyloseq(OTU.physeq, tax.physeq, meta.physeq)
@@ -296,24 +298,12 @@ run_deseq2 <- function(my_factor, x, y){
     geom_text(color="black", x=length(unique(sigtab$Genus))-1, y=max(sigtab$log2FoldChange)-1, label=my_contrast[2], show_guide = F) +
     geom_text(color="black", x=3, y=min(sigtab$log2FoldChange)+1, label=my_contrast[3], show_guide = F) +
     theme(axis.text.x = element_text(angle = -90, hjust = 0, vjust=0.5))
-  
+ 
   ggsave(paste0("output/taxa/DESeq2-", my_contrast[2], "-", my_contrast[3], ".png"), DESeq_fig, height = 5, width = 10)
 }
 
 
 
 #run_deseq2("Stag.Loc", "Baseline.A", "Weekly.A")
-#run_deseq2("Stag.Loc", "Baseline.A", "Baseline.B")
-#run_deseq2("Stag.Loc", "Baseline.A", "Weekly.B") 
-#run_deseq2("Stag.Loc", "Baseline.A", "Baseline.C") 
-#run_deseq2("Stag.Loc", "Baseline.A", "Weekly.C") 
-#run_deseq2("Stag.Loc", "Weekly.A", "Baseline.B") 
-#run_deseq2("Stag.Loc", "Weekly.A", "Weekly.B") 
-#run_deseq2("Stag.Loc", "Weekly.A", "Baseline.C") 
-#run_deseq2("Stag.Loc", "Weekly.A", "Weekly.C") 
 #run_deseq2("Stag.Loc", "Baseline.B", "Weekly.B") 
-#run_deseq2("Stag.Loc", "Baseline.B", "Baseline.C") 
-#run_deseq2("Stag.Loc", "Baseline.B", "Weekly.C") 
-#run_deseq2("Stag.Loc", "Weekly.B", "Baseline.C") 
-#run_deseq2("Stag.Loc", "Weekly.B", "Weekly.C") 
 #run_deseq2("Stag.Loc", "Baseline.C", "Weekly.C") 
